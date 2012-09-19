@@ -61,7 +61,6 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="W32Lib.lib"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(InputDir)lib&quot;"
 				GenerateDebugInformation="true"
