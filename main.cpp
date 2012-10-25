@@ -11,31 +11,10 @@
 
 #include "abstract.h"
 
-// Working with  cd-rom
-#include <winioctl.h>
-#include "ntddcdrm.h"
-
 using namespace DM;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	//HANDLE hFile = CreateFile (_T("\\\\.\\CDROM0"), GENERIC_READ,
-	//								FILE_SHARE_READ/*|FILE_SHARE_WRITE*/,
-	//								NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
-	//								NULL);
-
-	//if (hFile != INVALID_HANDLE_VALUE) {
-	//	DWORD rw = 0;
-	//	BYTE sec[2048] = {0};
-	//	::SetFilePointer(hFile, 16*2048, NULL, FILE_BEGIN);
-	//	::ReadFile(hFile, sec, 2048, &rw, NULL);
-	//	int x = 0;
-	//}
-	//else {
-	//	DWORD err = ::GetLastError();
-	//	int x = 0;
-	//}
-
 	BOOL ret = FALSE;
 	DiskMaster *dm = NULL;
 	DiskMasterManager *dm_mgr = DM::GetDiskMasterManager();
