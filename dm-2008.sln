@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DMTools", "dm.vcproj", "{F00A460E-2760-4ED7-AF6D-9DE3A70B40B6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F00A460E-2760-4ED7-AF6D-9DE3A70B40B6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F00A460E-2760-4ED7-AF6D-9DE3A70B40B6}.Debug|Win32.Build.0 = Debug|Win32
+		{F00A460E-2760-4ED7-AF6D-9DE3A70B40B6}.Release|Win32.ActiveCfg = Release|Win32
+		{F00A460E-2760-4ED7-AF6D-9DE3A70B40B6}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

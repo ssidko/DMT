@@ -10,6 +10,7 @@ Thumbs.db
 *_i.c
 *_p.c
 *.ncb
+*.sdf
 *.suo
 *.tlb
 *.tlh
@@ -19,5 +20,8 @@ Thumbs.db
 *.log
 *.sbr
 obj/
+ipch/
 _ReSharper*/
+[Dd]ebug/
+[Rr]elease
 [Tt]est[Rr]esult*
