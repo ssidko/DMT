@@ -635,7 +635,6 @@ void DM::DiskMaster::CmdTaskBreak( void )
 	DM_CMD_MSG_HEADER hdr;
 	if (sizeof(break_code) == io->Write(&break_code, sizeof(break_code))) {
 		task_in_progress = FALSE;
-		dm_current_task = kTaskNone;
 		::Sleep(500);
 	}
 }
