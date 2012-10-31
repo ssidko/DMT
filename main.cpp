@@ -11,6 +11,10 @@
 
 #include "abstract.h"
 
+// Working with  cd-rom
+#include <winioctl.h>
+#include "ntddcdrm.h"
+
 using namespace DM;
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -19,24 +23,26 @@ int _tmain(int argc, _TCHAR* argv[])
 	DiskMaster *dm = NULL;
 	DiskMasterManager *dm_mgr = DM::GetDiskMasterManager();
 
-	const Disk *disk = NULL;
+	Disk *disk = NULL;
 	if (dm_mgr->Rescan()) {
 		dm = dm_mgr->GetDiskMaster(0);
 		if (dm->Open()) {
-			//DWORD dsk_count = dm->Rescan();
-			//disk = dm->Rescan(kSata1);
-			//disk = dm->Rescan(kUsb1);
+			ULONGLONG offset = 0;
+			disk = dm->Rescan(kSata1);
+			if (disk) {
+				BYTE *block = new BYTE[disk->BlockSize()];
+				memset(block, 0xAA, disk->BlockSize());
+				
+				dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
 
-			ULONGLONG src_offs = 2000000;
-			ULONGLONG dst_offs = 1000000;
-			ULONGLONG count = 2000000;
+				memset(block, 0xAA, disk->BlockSize());
 
-			//dm->Copy(kUsb1, kUsb2);
-			//dm->CopyEx(kUsb1, kSata1, src_offs, dst_offs, count, NULL);
-			//dm->Erase(kSata1, kErasePattern_FF);
-			//dm->EraseEx(kSata1, src_offs, count, kErasePattern_FF);
-			//dm->Test(kSata1, NULL);
-			//dm->TestEx(kSata1, src_offs, count, NULL);
+				dm->WriteBlock(kSata1, offset, block, disk->BlockSize());
+
+				dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
+
+				int x = 0;
+			}
 
 			ret = dm->Close();
 		}

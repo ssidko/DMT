@@ -111,6 +111,8 @@ typedef DM::DM_MESSAGE<kMsgBadLba, DM::DM_LBA>					MSG_BAD_LBA;
 typedef DM::DM_MESSAGE<kMsgEndWriteLba, WORD>					MSG_END_WRITE_LBA;
 typedef DM::DM_MESSAGE<kMsgGetCommand, WORD>					MSG_GET_COMMAND;
 
+typedef WORD													CMD_COMPLETE_CODE;
+
 #pragma pack(pop)
 
 DM::DiskMaster::DiskMaster( DWORD dm_id, DWORD dm_unique_id, IO *dm_io ) :
@@ -546,24 +548,24 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 	return TRUE;
 }
 
-BOOL DM::DiskMaster::CmdReadLbaHdd1( BYTE *buff, ULONGLONG lba, DWORD lba_size )
+BOOL DM::DiskMaster::CmdReadLbaHdd1(BYTE *buff, ULONGLONG &lba, DWORD lba_size)
 {
 	DMT_TRACE("\n ReadLbaHdd1\n");
 	assert(opened);
 	assert( (dm_current_task == kTaskUsb1Sata1Copy) ||
-		(dm_current_task == kTaskUsb1Usb2Copy) ||
-		(dm_current_task == kTaskUsb1Read) );
+			(dm_current_task == kTaskUsb1Usb2Copy) ||
+			(dm_current_task == kTaskUsb1Read) );
 
-	WORD complete_code = 0;
+	CMD_COMPLETE_CODE complete_code = 0;
 	CMD_READ_LBA_HDD1 cmd;
 	cmd.param = lba;
 	if (SendCommand(cmd)) {
 		DM_CMD_MSG_HEADER hdr;
 		if (sizeof(DM_CMD_MSG_HEADER) == io->Read(&hdr, sizeof(DM_CMD_MSG_HEADER))) {
 			assert(hdr.code == kMsgReadLbaData);
-			assert(hdr.param_size == (lba_size + sizeof(WORD)));
-			if ((hdr.param_size - sizeof(WORD)) == io->Read(buff, hdr.param_size - sizeof(WORD)))
-				if (sizeof(WORD) == io->Read(&complete_code, sizeof(WORD)))
+			assert(hdr.param_size == (lba_size + sizeof(CMD_COMPLETE_CODE)));
+			if ((hdr.param_size - sizeof(CMD_COMPLETE_CODE)) == io->Read(buff, hdr.param_size - sizeof(CMD_COMPLETE_CODE)))
+				if (sizeof(CMD_COMPLETE_CODE) == io->Read(&complete_code, sizeof(CMD_COMPLETE_CODE)))
 					if (complete_code == kReadWriteEnd)
 						return TRUE;
 		}
@@ -571,26 +573,26 @@ BOOL DM::DiskMaster::CmdReadLbaHdd1( BYTE *buff, ULONGLONG lba, DWORD lba_size )
 	return FALSE;
 }
 
-BOOL DM::DiskMaster::CmdReadLbaHdd2( BYTE *buff, ULONGLONG lba, DWORD lba_size )
+BOOL DM::DiskMaster::CmdReadLbaHdd2(BYTE *buff, ULONGLONG &lba, DWORD lba_size)
 {
 	DMT_TRACE("\n ReadLbaHdd2\n");
 	assert(opened);
 	assert( (dm_current_task == kTaskUsb1Sata1Copy) ||
-		(dm_current_task == kTaskUsb1Usb2Copy) ||
-		(dm_current_task == kTaskUsb2Read) ||
-		(dm_current_task == kTaskSata1Read) ||
-		(dm_current_task == kTaskSata1Verify) );
+			(dm_current_task == kTaskUsb1Usb2Copy) ||
+			(dm_current_task == kTaskUsb2Read) ||
+			(dm_current_task == kTaskSata1Read) ||
+			(dm_current_task == kTaskSata1Verify) );
 
-	WORD complete_code = 0;
+	CMD_COMPLETE_CODE complete_code = 0;
 	CMD_READ_LBA_HDD2 cmd;
 	cmd.param = lba;
 	if (SendCommand(cmd)) {
 		DM_CMD_MSG_HEADER hdr;
 		if (sizeof(DM_CMD_MSG_HEADER) == io->Read(&hdr, sizeof(DM_CMD_MSG_HEADER))) {
 			assert(hdr.code == kMsgReadLbaData);
-			assert(hdr.param_size == (lba_size + sizeof(WORD)));
-			if ((hdr.param_size - sizeof(WORD)) == io->Read(buff, hdr.param_size - sizeof(WORD)))
-				if (sizeof(WORD) == io->Read(&complete_code, sizeof(WORD)))
+			assert(hdr.param_size == (lba_size + sizeof(CMD_COMPLETE_CODE)));
+			if ((hdr.param_size - sizeof(CMD_COMPLETE_CODE)) == io->Read(buff, hdr.param_size - sizeof(CMD_COMPLETE_CODE)))
+				if (sizeof(CMD_COMPLETE_CODE) == io->Read(&complete_code, sizeof(CMD_COMPLETE_CODE)))
 					if (complete_code == kReadWriteEnd)
 						return TRUE;
 		}
@@ -598,15 +600,15 @@ BOOL DM::DiskMaster::CmdReadLbaHdd2( BYTE *buff, ULONGLONG lba, DWORD lba_size )
 	return FALSE;
 }
 
-BOOL DM::DiskMaster::CmdWriteLbaHdd2( BYTE *buff, ULONGLONG lba, DWORD lba_size )
+BOOL DM::DiskMaster::CmdWriteLbaHdd2(BYTE *buff, ULONGLONG &lba, DWORD lba_size)
 {
 	DMT_TRACE("\n WriteLbaHdd2\n");
 	assert(opened);
 	assert( (dm_current_task == kTaskUsb1Sata1Copy) ||
-		(dm_current_task == kTaskUsb1Usb2Copy) ||
-		(dm_current_task == kTaskUsb2Read) ||
-		(dm_current_task == kTaskSata1Read) ||
-		(dm_current_task == kTaskSata1Verify) );
+			(dm_current_task == kTaskUsb1Usb2Copy) ||
+			(dm_current_task == kTaskUsb2Read) ||
+			(dm_current_task == kTaskSata1Read) ||
+			(dm_current_task == kTaskSata1Verify) );
 
 	BYTE *write_cmd = new BYTE[sizeof(DM_CMD_MSG_HEADER) + sizeof(DM_LBA) + lba_size];
 	((PDM_CMD_MSG_HEADER)write_cmd)->code = kCmdWriteLbaHdd2;
@@ -614,11 +616,11 @@ BOOL DM::DiskMaster::CmdWriteLbaHdd2( BYTE *buff, ULONGLONG lba, DWORD lba_size 
 	memcpy(&write_cmd[sizeof(DM_CMD_MSG_HEADER)], &lba, sizeof(DM_LBA));
 	memcpy(&write_cmd[sizeof(DM_CMD_MSG_HEADER) + sizeof(DM_LBA)], buff, lba_size);
 	if (SendCommand(*(PDM_CMD_MSG_HEADER)write_cmd)) {
-		MSG_END_WRITE_LBA end_msg;
-		if (sizeof(MSG_END_WRITE_LBA) == io->Read(&end_msg, sizeof(MSG_END_WRITE_LBA))) {
-			assert(end_msg.code == kMsgEndWriteLba);
-			assert(end_msg.param_size == sizeof(WORD));
-			if (end_msg.param == kReadWriteEnd)
+		MSG_END_WRITE_LBA msg;
+		if (sizeof(MSG_END_WRITE_LBA) == io->Read(&msg, sizeof(MSG_END_WRITE_LBA))) {
+			assert(msg.code == kMsgEndWriteLba);
+			assert(msg.param_size == sizeof(CMD_COMPLETE_CODE));
+			if (msg.param == kReadWriteEnd)
 				return TRUE;
 		}
 	}
@@ -635,6 +637,7 @@ void DM::DiskMaster::CmdTaskBreak( void )
 	DM_CMD_MSG_HEADER hdr;
 	if (sizeof(break_code) == io->Write(&break_code, sizeof(break_code))) {
 		task_in_progress = FALSE;
+		dm_current_task = kTaskNone;
 		::Sleep(500);
 	}
 }
@@ -959,13 +962,17 @@ BOOL DM::DiskMaster::TestEx( DWORD port, ULONGLONG &offset, ULONGLONG &count, DW
 	return FALSE;
 }
 
-void DM::DiskMaster::Break( void )
+void DM::DiskMaster::Break(void)
 {
 	CmdTaskBreak();
 }
 
-BOOL DM::DiskMaster::ReadBlock( DWORD port, ULONGLONG &offset, BYTE *buff, DWORD block_size ) /*!!! NOT IMPLEMENTED !!!*/
+BOOL DM::DiskMaster::ReadBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD block_size)
 {
+	assert(buff);
+	assert(block_size);
+	assert(port < kPortsCount);
+
 	if (opened) {
 		BYTE task_code;
 		if (port == kUsb1) {
@@ -976,13 +983,26 @@ BOOL DM::DiskMaster::ReadBlock( DWORD port, ULONGLONG &offset, BYTE *buff, DWORD
 			task_code = kTaskSata1Read;
 		} else return FALSE;
 
+		if (dm_current_task != task_code)
+			if (!CmdSendTask(task_code))
+				return FALSE;
 
+		if (disks[port]->block_size == block_size) {
+			if (port == kUsb1)
+				return CmdReadLbaHdd1(buff, offset, block_size);
+			else
+				return CmdReadLbaHdd2(buff, offset, block_size);
+		}
 	}
 	return FALSE;
 }
 
-BOOL DM::DiskMaster::WriteBlock( DWORD port, ULONGLONG &offset, BYTE *buff, DWORD block_size ) /*!!! NOT IMPLEMENTED !!!*/
+BOOL DM::DiskMaster::WriteBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD block_size)
 {
+	assert(buff);
+	assert(block_size);
+	assert(port < kPortsCount);
+
 	if (opened) {
 		BYTE task_code;
 		if (port == kUsb2) {
@@ -991,7 +1011,12 @@ BOOL DM::DiskMaster::WriteBlock( DWORD port, ULONGLONG &offset, BYTE *buff, DWOR
 			task_code = kTaskSata1Read;
 		} else return FALSE;
 
+		if (dm_current_task != task_code)
+			if (!CmdSendTask(task_code))
+				return FALSE;
 
+		if (disks[port]->block_size == block_size)
+			return CmdWriteLbaHdd2(buff, offset, block_size);
 	}
 	return FALSE;
 }

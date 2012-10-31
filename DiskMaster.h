@@ -152,9 +152,9 @@ namespace DM
 		BOOL CmdCopyBlock(DM_LBA_RANGE &range);
 		BOOL CmdTestBlock(DM_LBA_RANGE &range);
 		BOOL CmdEraseBlock(DM_LBA_RANGE &range);
-		BOOL CmdReadLbaHdd1(BYTE *buff, ULONGLONG lba, DWORD lba_size);
-		BOOL CmdReadLbaHdd2(BYTE *buff, ULONGLONG lba, DWORD lba_size);
-		BOOL CmdWriteLbaHdd2(BYTE *buff, ULONGLONG lba, DWORD lba_size);
+		BOOL CmdReadLbaHdd1(BYTE *buff, ULONGLONG &lba, DWORD lba_size);
+		BOOL CmdReadLbaHdd2(BYTE *buff, ULONGLONG &lba, DWORD lba_size);
+		BOOL CmdWriteLbaHdd2(BYTE *buff, ULONGLONG &lba, DWORD lba_size);
 		void CmdTaskBreak(void);
 
 		BOOL WaitForTaskEnd();
