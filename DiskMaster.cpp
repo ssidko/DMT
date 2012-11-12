@@ -6,7 +6,7 @@
 #define DM_CHECK_CODE								(WORD)0x4343
 #define DM_SEND_COMMAND_DELAY						(DWORD)100				// Задержка перед пересылкой параметра
 #define DM_SEND_TASK_DELAY							(DWORD)10*1000			// Задержка перед получением DETECT_INFO
-#define DM_RESPONSE_TIMEOUT							(DWORD)2*60*1000
+#define DM_RESPONSE_TIMEOUT							(DWORD)2*60*1000		// Время в течении которого должен ответить "USB DiskMaster"
 
 
 enum DM_TaskCode {
@@ -24,15 +24,6 @@ enum DM_TaskCode {
 	kTaskSata1_FF_Erase,
 	kTaskSata1_Random_Erase,
 	kTaskLastTaskCode
-};
-
-enum DM_TaskEndCode {
-	kEndCodeTaskEnd = 0x1111,
-	kEndCodeTaskBreak = 0x2222,
-	kEndCodeTaskCrash = 0x3333,
-	kEndCodeTaskNotEnd = 0x4444,
-	kEndCodeTaskShkPwrEnd = 0x5555,
-	kEndCodeTaskCrcErrorEnd = 0x6666
 };
 
 enum DM_Command {
@@ -94,7 +85,7 @@ enum DM_OffsetDirection {
 
 typedef DM::DM_COMMAND<kCmdCheckReady, WORD>					CMD_CHECK_READY;
 typedef DM::DM_COMMAND<kCmdBoardOn, DWORD>						CMD_BOARD_ON;
-typedef DM::DM_COMMAND<kCmdSendOption, DM::SEND_OPTION>			CMD_SEND_OPTION;
+typedef DM::DM_COMMAND<kCmdSendOption, DM::DM_OPTION>			CMD_SEND_OPTION;
 typedef DM::DM_COMMAND<kCmdSendTask, WORD>						CMD_SEND_TASK;
 typedef DM::DM_COMMAND<kCmdSetSataSize, DM::DM_LBA>				CMD_SET_SATA_SIZE;
 typedef DM::DM_COMMAND<kCmdSetCopyOffset, DM::DM_COPY_OFFSET>	CMD_SET_COPY_OFFSET;
@@ -257,13 +248,13 @@ BOOL DM::DiskMaster::CmdBoardOff()
 	return SendCommand(cmd);
 }
 
-BOOL DM::DiskMaster::CmdSendOption( SEND_OPTION &option )
+BOOL DM::DiskMaster::CmdSendOption( DM_OPTION &option )
 {
 	DMT_TRACE("\n SendOption\n");
 	assert(opened);
 
 	CMD_SEND_OPTION cmd;
-	memcpy(&cmd.param, &option, sizeof(SEND_OPTION));
+	memcpy(&cmd.param, &option, sizeof(DM_OPTION));
 	return SendCommand(cmd);
 }
 
@@ -657,7 +648,7 @@ DM::IO *DM::DiskMaster::GetIO( void )
 	return io;
 }
 
-DWORD DM::DiskMaster::GetID( void )
+DWORD DM::DiskMaster::GetNumber( void )
 {
 	return id;
 }

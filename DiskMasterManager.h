@@ -15,11 +15,11 @@ namespace DM
 	{
 	private:
 		DiskMastersList dm_list;
-		DWORD next_id;
+		DWORD next_number;
 
-		DWORD GenerateNewID(void)
+		DWORD GetNextNumber(void)
 		{
-			return ++next_id;
+			return ++next_number;
 		}
 
 		BOOL Add(DiskMaster *dm)
@@ -57,7 +57,7 @@ namespace DM
 		}
 
 	public:
-		DiskMasterManager() : next_id(0)
+		DiskMasterManager() : next_number(0)
 		{
 			DM::GetD2XXManager()->Attach(this);
 		}
@@ -73,7 +73,7 @@ namespace DM
 			if (manager == (ManagerNotifier *)GetD2XXManager()) {
 				DWORD dm_id = 0;
 				DWORD dm_unique_id = 0;
-				D2XXDevice *ft_dev = dynamic_cast<D2XXDevice *>((D2XXDevice *)device);				
+				D2XXDevice *ft_dev = static_cast<D2XXDevice *>((D2XXDevice *)device);				
 				if (ft_dev) {
 					BOOL ret = TRUE;
 					DiskMaster *dm = NULL;
@@ -84,7 +84,7 @@ namespace DM
 									ret &= ft_dev->SetTimeouts(FT_READ_TIMEOUT, FT_WRITE_TIMEOUT);
 									ret &= ft_dev->SetBaudRate(FT_BAUD_RATE);
 									ret &= ft_dev->SetDataCharacteristics(FT_WORD_LENGTH, FT_STOP_BITS_1, FT_PARITY_NONE);
-									dm_id = GenerateNewID();
+									dm_id = GetNextNumber();
 									ft_dev->GetUniqueChipID(&dm_unique_id);
 									if (ret && dm_id && dm_unique_id) {
 										dm = new DiskMaster(dm_id, dm_unique_id, ft_dev);

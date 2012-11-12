@@ -26,26 +26,27 @@ int _tmain(int argc, _TCHAR* argv[])
 	Disk *disk = NULL;
 	if (dm_mgr->Rescan()) {
 		dm = dm_mgr->GetDiskMaster(0);
-		if (dm->Open()) {
-			ULONGLONG offset = 0;
-			disk = dm->Rescan(kSata1);
-			if (disk) {
-				BYTE *block = new BYTE[disk->BlockSize()];
-				memset(block, 0xAA, disk->BlockSize());
-				
-				dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
+		dm->Testing();
+		//if (dm->Open()) {
+		//	ULONGLONG offset = 0;
+		//	disk = dm->Rescan(kSata1);
+		//	if (disk) {
+		//		BYTE *block = new BYTE[disk->BlockSize()];
+		//		memset(block, 0xAA, disk->BlockSize());
+		//		
+		//		dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
 
-				memset(block, 0xAA, disk->BlockSize());
+		//		memset(block, 0xAA, disk->BlockSize());
 
-				dm->WriteBlock(kSata1, offset, block, disk->BlockSize());
+		//		dm->WriteBlock(kSata1, offset, block, disk->BlockSize());
 
-				dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
+		//		dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
 
-				int x = 0;
-			}
+		//		int x = 0;
+		//	}
 
-			ret = dm->Close();
-		}
+		//	ret = dm->Close();
+		//}
 	}
 
 	_tprintf(_T("\nPress any key for exit ..."));

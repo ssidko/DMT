@@ -51,7 +51,7 @@ namespace DM
 
 		virtual DWORD ReadBlock(ULONGLONG block_offset, BYTE *buff, DWORD block_count) = 0;
 
-		virtual DWORD WriteBlock(ULONGLONG block_offset,BYTE *buff, DWORD block_count) = 0;
+		virtual DWORD WriteBlock(ULONGLONG block_offset, BYTE *buff, DWORD block_count) = 0;
 
 		// ¬озвращает размер устройства в блоках.
 		virtual ULONGLONG Size() = 0;
@@ -91,7 +91,7 @@ namespace DM
 
 		virtual BOOL IsOpen() = 0;
 
-		virtual DWORD GetID(void) = 0;
+		virtual DWORD GetNumber(void) = 0;
 
 		virtual DWORD GetUniqueID(void) = 0;
 

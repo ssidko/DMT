@@ -10,8 +10,23 @@
 
 namespace DM 
 {
-#define DM_DESCRIPTION_MAX_LEN				(DWORD)64
-#define DM_DESCRIPTION_STR					"USB DiskMaster"
+#define DM_DESCRIPTION_MAX_LEN						(DWORD)64
+#define DM_DESCRIPTION_STR							"USB DiskMaster"
+
+#define DM_ENABLED									1
+#define DM_DISABLED									0
+
+#define DM_BAD_MARKER_0000							0
+#define DM_BAD_MARKER_BAD							1
+
+#define DM_DEFAULT_OPT_READ_COUNT					(WORD) 100			// „исло попыток чтени€ дефектных секторов
+#define DM_DEFAULT_OPT_READ_TIMEOUT					(WORD) 15000		// ƒопустимое врем€ выполнени€ команд чтени€, мсек
+#define DM_DEFAULT_OPT_SHAKE_POWER_LIMIT			(WORD) 100			// ќбщее допустимое число переключений питани€ в течении одной задачи
+#define DM_DEFAULT_OPT_CHIRP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок чтени€/записи
+#define DM_DEFAULT_OPT_CRC_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок CRC
+#define DM_DEFAULT_OPT_END_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при завершении (прекращении) задачи
+#define DM_DEFAULT_OPT_BAD_MARKER					(WORD) DM_BAD_MARKER_0000 // ћаркер 
+
 
 	enum DM_Event {
 		kNewDiskDetected,			// param = (DMDisk *)
@@ -36,6 +51,15 @@ namespace DM
 		kDetectErrorUsb2,
 		kDetectErrorSata1,
 		kDetectErrorSata1Lock
+	};
+
+	enum DM_TaskEndCode {
+		kEndCodeTaskEnd = 0x1111,
+		kEndCodeTaskBreak = 0x2222,
+		kEndCodeTaskCrash = 0x3333,
+		kEndCodeTaskNotEnd = 0x4444,
+		kEndCodeTaskShkPwrEnd = 0x5555,
+		kEndCodeTaskCrcErrorEnd = 0x6666
 	};
 
 #pragma pack(push)
@@ -97,14 +121,15 @@ namespace DM
 		DWORD Slow_300_cnt;
 	} DM_TASK_INFO, *PDM_TASK_INFO;
 
-	typedef struct _SEND_OPTION {
-		WORD NumRepeatRd;
-		WORD RdTimeLimit;
-		WORD ShkPwrLimit;
-		WORD Chirp;
-		WORD CrcBeep;
-		WORD EndBeep;
-	} SEND_OPTION, *PSEND_OPTION;
+	typedef struct _DM_OPTION {
+		WORD NumRepeatRd;				// „исло попыток чтени€ дефектных секторов
+		WORD RdTimeLimit;				// ƒопустимое врем€ выполнени€ команд чтени€, мсек
+		WORD ShkPwrLimit;				// ќбщее допустимое число переключений питани€ в течении одной задачи
+		WORD Chirp;						// –азрешение/запрещение звукового сигнала при обработке ошибок чтени€/записи
+		WORD CrcBeep;					// –азрешение/запрещение звукового сигнала при обработке ошибок CRC
+		WORD EndBeep;					// –азрешение/запрещение звукового сигнала при завершении (прекращении) задачи
+		WORD BadMarker;					// ћаркер
+	} DM_OPTION, *PDM_OPTION;
 
 	typedef struct _DM_LBA_RANGE {
 		DM_LBA start;
@@ -145,7 +170,7 @@ namespace DM
 		BOOL CmdCheckReady(void);
 		BOOL CmdBoardOn();
 		BOOL CmdBoardOff();
-		BOOL CmdSendOption(SEND_OPTION &option);
+		BOOL CmdSendOption(DM_OPTION &option);
 		BOOL CmdSendTask(BYTE task_code);
 		BOOL CmdSetSataSize(ULONGLONG &new_size);
 		BOOL CmdSetCopyOffset(DM_COPY_OFFSET &copy_offset);
@@ -168,7 +193,7 @@ namespace DM
 
 		IO *GetIO(void);
 
-		virtual DWORD GetID(void);
+		virtual DWORD GetNumber(void);
 		virtual DWORD GetUniqueID(void);
 		virtual const char *GetName(void);
 
@@ -195,6 +220,26 @@ namespace DM
 
 		BOOL ReadBlock(DWORD port, ULONGLONG &offset,  BYTE *buff, DWORD block_size) /*!!! NOT IMPLEMENTED !!!*/;
 		BOOL WriteBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD block_size) /*!!! NOT IMPLEMENTED !!!*/;
+
+		void Testing(void *param = NULL)
+		{
+			if (Open()) {
+				BOOL ret = FALSE; 
+				DM_OPTION option;
+				option.NumRepeatRd = DM_DEFAULT_OPT_READ_COUNT;
+				option.RdTimeLimit = DM_DEFAULT_OPT_READ_TIMEOUT;
+				option.ShkPwrLimit = DM_DEFAULT_OPT_SHAKE_POWER_LIMIT;
+				option.Chirp = DM_DEFAULT_OPT_CHIRP;
+				option.CrcBeep = DM_DEFAULT_OPT_CRC_BEEP;
+				option.EndBeep = DM_DEFAULT_OPT_END_BEEP;
+				option.BadMarker = DM_DEFAULT_OPT_BAD_MARKER;
+
+				ret = this->CmdSendOption(option);
+
+				
+				int x = 0;	
+			}		
+		}
 	};
 }
 
