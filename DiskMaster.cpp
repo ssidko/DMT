@@ -107,23 +107,23 @@ typedef WORD													CMD_COMPLETE_CODE;
 #pragma pack(pop)
 
 DM::DiskMaster::DiskMaster( DWORD dm_id, DWORD dm_unique_id, IO *dm_io ) :
-	id(dm_id),
+	number(dm_id),
 	unique_id(dm_unique_id),
 	io(dm_io),
 	opened(FALSE),
-	dm_current_task(kTaskNone),
-	dm_last_cmd(kCmdUnknownCommand),
+	current_task(kTaskNone),
+	last_cmd(kCmdUnknownCommand),
 	last_bad(0)
 {
 	assert(dm_id);
 	assert(dm_io);
 
 	memset(name, 0x00, sizeof(name));
-	strcpy_s(name, DM_DESCRIPTION_MAX_LEN, DM_DESCRIPTION_STR);
+	strcpy_s(name, DM_NAME_MAX_LEN, DM_DESCRIPTION_STR);
 
 	memset(disks, 0x00, sizeof(disks));
-	memset(&dm_task_info, 0x00, sizeof(DM_TASK_INFO));
-	dm_last_cmd = kCmdUnknownCommand;
+	memset(&task_info, 0x00, sizeof(DM_TASK_INFO));
+	last_cmd = kCmdUnknownCommand;
 
 	memset(ports, 0x00, sizeof(ports));
 
@@ -146,6 +146,8 @@ DM::DiskMaster::DiskMaster( DWORD dm_id, DWORD dm_unique_id, IO *dm_io ) :
 	strcpy_s(ports[kSata1].name, PORT_NAME_MAX_LENGTH, "SATA1");
 
 	task_in_progress = FALSE;
+
+	InitializeOptionWithDefaultValues(&option);
 }
 
 DM::DiskMaster::~DiskMaster()
@@ -155,8 +157,8 @@ DM::DiskMaster::~DiskMaster()
 
 void DM::DiskMaster::Initialize( void )
 {
-	dm_current_task = kTaskNone;
-	memset(&dm_task_info, 0x00, sizeof(DM_TASK_INFO));
+	current_task = kTaskNone;
+	memset(&task_info, 0x00, sizeof(DM_TASK_INFO));
 }
 
 BOOL DM::DiskMaster::IsValidCommand( WORD code )
@@ -172,7 +174,7 @@ BOOL DM::DiskMaster::SendCommand( DM_CMD_MSG_HEADER &cmd )
 	BYTE *param = NULL;
 	if (sizeof(DM_CMD_MSG_HEADER) == io->Write(&cmd, sizeof(DM_CMD_MSG_HEADER))) {
 		if (!cmd.param_size) {
-			dm_last_cmd = cmd.code;
+			last_cmd = cmd.code;
 			return TRUE;
 		}
 		else ::Sleep(DM_SEND_COMMAND_DELAY);
@@ -185,13 +187,13 @@ BOOL DM::DiskMaster::SendCommand( DM_CMD_MSG_HEADER &cmd )
 						case kCmdCheckReady:
 							if (sizeof(check_code) == io->Read(&check_code, sizeof(check_code))) {
 								assert(check_code == *(&((WORD *)&cmd)[2]));
-								dm_last_cmd = cmd.code;
+								last_cmd = cmd.code;
 								DMT_TRACE("   OK\n");
 								return TRUE;
 							}
 							break;
 						case kCmdBoardOff:
-							dm_last_cmd = cmd.code;
+							last_cmd = cmd.code;
 							return TRUE;
 						case kCmdBoardOn:
 						case kCmdSendOption:
@@ -207,7 +209,7 @@ BOOL DM::DiskMaster::SendCommand( DM_CMD_MSG_HEADER &cmd )
 							if (sizeof(MSG_GET_COMMAND) == io->Read(&get_cmd, sizeof(MSG_GET_COMMAND))) {
 								assert(get_cmd.code == kMsgGetCommand);
 								assert(get_cmd.param == cmd.code);
-								dm_last_cmd = cmd.code;
+								last_cmd = cmd.code;
 								DMT_TRACE("   OK\n");
 								return TRUE;
 							}
@@ -235,7 +237,7 @@ BOOL DM::DiskMaster::CmdBoardOn()
 {
 	DMT_TRACE("\n BoardOn\n");
 	CMD_BOARD_ON cmd;
-	cmd.param = id;
+	cmd.param = number;
 	return (opened = SendCommand(cmd));
 }
 
@@ -248,13 +250,13 @@ BOOL DM::DiskMaster::CmdBoardOff()
 	return SendCommand(cmd);
 }
 
-BOOL DM::DiskMaster::CmdSendOption( DM_OPTION &option )
+BOOL DM::DiskMaster::CmdSendOption( DM_OPTION *dm_option )
 {
 	DMT_TRACE("\n SendOption\n");
-	assert(opened);
+	assert(dm_option);
 
 	CMD_SEND_OPTION cmd;
-	memcpy(&cmd.param, &option, sizeof(DM_OPTION));
+	memcpy(&cmd.param, dm_option, sizeof(DM_OPTION));
 	return SendCommand(cmd);
 }
 
@@ -359,7 +361,7 @@ BOOL DM::DiskMaster::CmdSendTask( BYTE task_code )
 				switch (hdr.code) {
 							case kMsgDetectInfo:
 								if (sizeof(DM_DETECT_INFO) == io->Read(&info, sizeof(DM_DETECT_INFO))) {
-									dm_current_task = task_code;
+									current_task = task_code;
 									ProcessDetectInfo(info, task_code);
 									DMT_TRACE("\n");
 									DMT_TRACE(" DETECT INFO:\n");
@@ -371,7 +373,7 @@ BOOL DM::DiskMaster::CmdSendTask( BYTE task_code )
 								}
 								break;
 							case kMsgDetectError:
-								dm_current_task = kTaskNone;
+								current_task = kTaskNone;
 								io->Read(&error_code, sizeof(error_code));
 								DMT_TRACE("  Detect Error: %d\n", error_code);
 								this->Notify(kDetectError, (void *)error_code);
@@ -393,9 +395,9 @@ BOOL DM::DiskMaster::CmdSetSataSize( ULONGLONG &new_size )
 {
 	DMT_TRACE("\n SetSataSize\n");
 	assert(opened);
-	assert( (dm_current_task == kTaskUsb1Sata1Copy) ||
-		(dm_current_task == kTaskSata1Read) || 
-		(dm_current_task == kTaskSata1Verify) );
+	assert( (current_task == kTaskUsb1Sata1Copy) ||
+		(current_task == kTaskSata1Read) || 
+		(current_task == kTaskSata1Verify) );
 
 	CMD_SET_SATA_SIZE cmd;
 	cmd.param = new_size;
@@ -406,7 +408,7 @@ BOOL DM::DiskMaster::CmdSetCopyOffset( DM_COPY_OFFSET &copy_offset )
 {
 	DMT_TRACE("\n SetCopyOffset\n");
 	assert(opened);
-	assert((dm_current_task == kTaskUsb1Sata1Copy) || (dm_current_task == kTaskUsb1Usb2Copy));
+	assert((current_task == kTaskUsb1Sata1Copy) || (current_task == kTaskUsb1Usb2Copy));
 
 	CMD_SET_COPY_OFFSET cmd;
 	memcpy(&cmd.param, &copy_offset, sizeof(DM_COPY_OFFSET));
@@ -417,10 +419,10 @@ BOOL DM::DiskMaster::CmdCopyBlock( DM_LBA_RANGE &range )
 {
 	DMT_TRACE("\n CopyBlock\n");
 	assert(opened);
-	assert((dm_current_task == kTaskUsb1Sata1Copy) || (dm_current_task == kTaskUsb1Usb2Copy));
+	assert((current_task == kTaskUsb1Sata1Copy) || (current_task == kTaskUsb1Usb2Copy));
 
 	CMD_COPY_BLOCK cmd;
-	memset(&dm_task_info, 0x00, sizeof(DM_TASK_INFO));
+	memset(&task_info, 0x00, sizeof(DM_TASK_INFO));
 	memcpy(&cmd.param, &range, sizeof(range));
 	if (SendCommand(cmd)) {
 		task_in_progress = TRUE;
@@ -433,13 +435,13 @@ BOOL DM::DiskMaster::CmdTestBlock( DM_LBA_RANGE &range )
 {
 	DMT_TRACE("\n TestBlock\n");
 	assert(opened);
-	assert( (dm_current_task == kTaskUsb1Read) ||
-		(dm_current_task == kTaskUsb2Read) ||
-		(dm_current_task == kTaskSata1Read) ||
-		(dm_current_task == kTaskSata1Verify) );
+	assert( (current_task == kTaskUsb1Read) ||
+		(current_task == kTaskUsb2Read) ||
+		(current_task == kTaskSata1Read) ||
+		(current_task == kTaskSata1Verify) );
 
 	CMD_TEST_BLOCK cmd;
-	memset(&dm_task_info, 0x00, sizeof(DM_TASK_INFO));
+	memset(&task_info, 0x00, sizeof(DM_TASK_INFO));
 	memcpy(&cmd.param, &range, sizeof(range));
 	if (SendCommand(cmd)) {
 		task_in_progress = TRUE;
@@ -452,15 +454,15 @@ BOOL DM::DiskMaster::CmdEraseBlock( DM_LBA_RANGE &range )
 {
 	DMT_TRACE("\n EraseBlock\n");
 	assert(opened);
-	assert( (dm_current_task == kTaskUsb2_00_Erase) ||
-		(dm_current_task == kTaskUsb2_FF_Erase) ||
-		(dm_current_task == kTaskUsb2_Random_Erase) ||
-		(dm_current_task == kTaskSata1_00_Erase) ||
-		(dm_current_task == kTaskSata1_FF_Erase) ||
-		(dm_current_task == kTaskSata1_Random_Erase) );
+	assert( (current_task == kTaskUsb2_00_Erase) ||
+		(current_task == kTaskUsb2_FF_Erase) ||
+		(current_task == kTaskUsb2_Random_Erase) ||
+		(current_task == kTaskSata1_00_Erase) ||
+		(current_task == kTaskSata1_FF_Erase) ||
+		(current_task == kTaskSata1_Random_Erase) );
 
 	CMD_ERASE_BLOCK cmd;
-	memset(&dm_task_info, 0x00, sizeof(DM_TASK_INFO));
+	memset(&task_info, 0x00, sizeof(DM_TASK_INFO));
 	memcpy(&cmd.param, &range, sizeof(range));
 	if (SendCommand(cmd)) {
 		task_in_progress = TRUE;
@@ -481,28 +483,28 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 			tick = ::GetTickCount();
 			switch(hdr.code){
 				case kMsgTaskInfo:
-					if (sizeof(DM_TASK_INFO) == io->Read(&dm_task_info, sizeof(DM_TASK_INFO))) {
-						memcpy(&curr_lba, &dm_task_info.Lba, sizeof(DM_LBA));
-						switch (dm_task_info.End_code) {
+					if (sizeof(DM_TASK_INFO) == io->Read(&task_info, sizeof(DM_TASK_INFO))) {
+						memcpy(&curr_lba, &task_info.Lba, sizeof(DM_LBA));
+						switch (task_info.End_code) {
 							case kEndCodeTaskNotEnd:
-								this->Notify(kTaskInProgress, &dm_task_info);
-								DMT_TRACE("  LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, dm_task_info.TimeCnt_1d, dm_task_info.TimeCnt_1h, dm_task_info.TimeCnt_1m, dm_task_info.TimeCnt_1s);
+								this->Notify(kTaskInProgress, &task_info);
+								DMT_TRACE("  LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.TimeCnt_1d, task_info.TimeCnt_1h, task_info.TimeCnt_1m, task_info.TimeCnt_1s);
 								break;
 
 							case kEndCodeTaskEnd:
 								// После получения этого сообщения можна продолжить посылать
 								// блочные команды в соответствии с кодом задачи
-								this->Notify(kTaskComplete, &dm_task_info);
+								this->Notify(kTaskComplete, &task_info);
 								task_in_progress = FALSE;
-								DMT_TRACE("  TASK END -- LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, dm_task_info.TimeCnt_1d, dm_task_info.TimeCnt_1h, dm_task_info.TimeCnt_1m, dm_task_info.TimeCnt_1s);
+								DMT_TRACE("  TASK END -- LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.TimeCnt_1d, task_info.TimeCnt_1h, task_info.TimeCnt_1m, task_info.TimeCnt_1s);
 								return TRUE;
 
 							case kEndCodeTaskBreak:
 								// После получения этого сообщения можна продолжить посылать
 								// блочные команды в соответствии с кодом задачи
-								this->Notify(kTaskBreak, &dm_task_info);
+								this->Notify(kTaskBreak, &task_info);
 								task_in_progress = FALSE;
-								DMT_TRACE("  Task BREAK LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, dm_task_info.TimeCnt_1d, dm_task_info.TimeCnt_1h, dm_task_info.TimeCnt_1m, dm_task_info.TimeCnt_1s);
+								DMT_TRACE("  Task BREAK LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.TimeCnt_1d, task_info.TimeCnt_1h, task_info.TimeCnt_1m, task_info.TimeCnt_1s);
 								return FALSE;
 
 							case kEndCodeTaskCrash:
@@ -513,10 +515,10 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 								// и ОБЯЗАТЕЛЬНО ДО УСТАНОВКИ current_task = kTaskNone,  
 								// т.к. подписчики обязательно захотят узнать какой именно таск закончился.
 								//
-								this->Notify(kTaskError, &dm_task_info);
-								dm_current_task = kTaskNone;
+								this->Notify(kTaskError, &task_info);
+								current_task = kTaskNone;
 								task_in_progress = FALSE;
-								DMT_TRACE(" Task ERROR: %d\n", dm_task_info.End_code);
+								DMT_TRACE(" Task ERROR: %d\n", task_info.End_code);
 								return FALSE;
 							default:
 								return FALSE;
@@ -543,9 +545,9 @@ BOOL DM::DiskMaster::CmdReadLbaHdd1(BYTE *buff, ULONGLONG &lba, DWORD lba_size)
 {
 	DMT_TRACE("\n ReadLbaHdd1\n");
 	assert(opened);
-	assert( (dm_current_task == kTaskUsb1Sata1Copy) ||
-			(dm_current_task == kTaskUsb1Usb2Copy) ||
-			(dm_current_task == kTaskUsb1Read) );
+	assert( (current_task == kTaskUsb1Sata1Copy) ||
+			(current_task == kTaskUsb1Usb2Copy) ||
+			(current_task == kTaskUsb1Read) );
 
 	CMD_COMPLETE_CODE complete_code = 0;
 	CMD_READ_LBA_HDD1 cmd;
@@ -568,11 +570,11 @@ BOOL DM::DiskMaster::CmdReadLbaHdd2(BYTE *buff, ULONGLONG &lba, DWORD lba_size)
 {
 	DMT_TRACE("\n ReadLbaHdd2\n");
 	assert(opened);
-	assert( (dm_current_task == kTaskUsb1Sata1Copy) ||
-			(dm_current_task == kTaskUsb1Usb2Copy) ||
-			(dm_current_task == kTaskUsb2Read) ||
-			(dm_current_task == kTaskSata1Read) ||
-			(dm_current_task == kTaskSata1Verify) );
+	assert( (current_task == kTaskUsb1Sata1Copy) ||
+			(current_task == kTaskUsb1Usb2Copy) ||
+			(current_task == kTaskUsb2Read) ||
+			(current_task == kTaskSata1Read) ||
+			(current_task == kTaskSata1Verify) );
 
 	CMD_COMPLETE_CODE complete_code = 0;
 	CMD_READ_LBA_HDD2 cmd;
@@ -595,11 +597,11 @@ BOOL DM::DiskMaster::CmdWriteLbaHdd2(BYTE *buff, ULONGLONG &lba, DWORD lba_size)
 {
 	DMT_TRACE("\n WriteLbaHdd2\n");
 	assert(opened);
-	assert( (dm_current_task == kTaskUsb1Sata1Copy) ||
-			(dm_current_task == kTaskUsb1Usb2Copy) ||
-			(dm_current_task == kTaskUsb2Read) ||
-			(dm_current_task == kTaskSata1Read) ||
-			(dm_current_task == kTaskSata1Verify) );
+	assert( (current_task == kTaskUsb1Sata1Copy) ||
+			(current_task == kTaskUsb1Usb2Copy) ||
+			(current_task == kTaskUsb2Read) ||
+			(current_task == kTaskSata1Read) ||
+			(current_task == kTaskSata1Verify) );
 
 	BYTE *write_cmd = new BYTE[sizeof(DM_CMD_MSG_HEADER) + sizeof(DM_LBA) + lba_size];
 	((PDM_CMD_MSG_HEADER)write_cmd)->code = kCmdWriteLbaHdd2;
@@ -622,25 +624,66 @@ void DM::DiskMaster::CmdTaskBreak( void )
 {
 	DMT_TRACE("\n TaskBreak\n");
 	assert(opened);
-	assert((dm_last_cmd == kCmdCopyBlock) || (dm_last_cmd == kCmdTestBlock) || (dm_last_cmd == kCmdEraseBlock));
+	assert((last_cmd == kCmdCopyBlock) || (last_cmd == kCmdTestBlock) || (last_cmd == kCmdEraseBlock));
 
 	BYTE break_code = 0xFF;
 	DM_CMD_MSG_HEADER hdr;
 	if (sizeof(break_code) == io->Write(&break_code, sizeof(break_code))) {
 		task_in_progress = FALSE;
-		dm_current_task = kTaskNone;
+		current_task = kTaskNone;
 		::Sleep(500);
 	}
 }
 
 WORD DM::DiskMaster::Task()
 {
-	return dm_current_task;
+	return current_task;
 }
 
 DWORD DM::DiskMaster::Command( void )
 {
-	return dm_last_cmd;
+	return last_cmd;
+}
+
+void DM::DiskMaster::InitializeOptionWithDefaultValues(DM::DM_OPTION *dm_option)
+{
+	assert(dm_option);
+
+	dm_option->NumRepeatRd = DM_DEFAULT_OPT_READ_COUNT;
+	dm_option->RdTimeLimit = DM_DEFAULT_OPT_READ_TIMEOUT;
+	dm_option->ShkPwrLimit = DM_DEFAULT_OPT_SHAKE_POWER_LIMIT;
+	dm_option->Chirp = DM_DEFAULT_OPT_CHIRP;
+	dm_option->CrcBeep = DM_DEFAULT_OPT_CRC_BEEP;
+	dm_option->EndBeep = DM_DEFAULT_OPT_END_BEEP;
+	dm_option->BadMarker = DM_DEFAULT_OPT_BAD_MARKER;
+}
+
+BOOL DM::DiskMaster::IsValidOption(DM::DM_OPTION *dm_option)
+{
+	assert(dm_option);
+	if ((dm_option->NumRepeatRd < DM_OPTION_READ_COUNT_MIN) && (dm_option->NumRepeatRd > DM_OPTION_READ_COUNT_MAX))
+		return FALSE;
+	if((dm_option->RdTimeLimit < DM_OPTION_READ_TIMEOUT_MIN) && (dm_option->RdTimeLimit > DM_OPTION_READ_TIMEOUT_MAX))
+		return FALSE;
+	if((dm_option->ShkPwrLimit < DM_OPTION_SHAKE_POWER_LIMIT_MIN) && (dm_option->ShkPwrLimit > DM_OPTION_SHAKE_POWER_LIMIT_MAX))
+		return FALSE;
+	if (!((dm_option->Chirp == DM_ENABLED) || (dm_option->Chirp == DM_DISABLED)))
+		return FALSE;
+	if (!((dm_option->CrcBeep == DM_ENABLED) || (dm_option->CrcBeep == DM_DISABLED)))
+		return FALSE;
+	if (!((dm_option->EndBeep == DM_ENABLED) || (dm_option->EndBeep == DM_DISABLED)))
+		return FALSE;
+	if (!((dm_option->BadMarker == DM_BAD_MARKER_0000) || (dm_option->BadMarker == DM_BAD_MARKER_BAD)))
+		return FALSE;
+	return TRUE;
+}
+
+BOOL DM::DiskMaster::SetDefaultOption(DM::DM_OPTION *dm_option)
+{
+	assert(dm_option);
+	assert(opened);
+	InitializeOptionWithDefaultValues(dm_option);
+	return SetOption(dm_option);
 }
 
 DM::IO *DM::DiskMaster::GetIO( void )
@@ -650,7 +693,7 @@ DM::IO *DM::DiskMaster::GetIO( void )
 
 DWORD DM::DiskMaster::GetNumber( void )
 {
-	return id;
+	return number;
 }
 
 DWORD DM::DiskMaster::GetUniqueID( void )
@@ -667,8 +710,11 @@ BOOL DM::DiskMaster::Open()
 {
 	Close();
 	Initialize();
-	if (CmdCheckReady()) return (opened = CmdBoardOn());
-	else return (opened = FALSE);
+	if (CmdCheckReady())
+		if (opened = CmdBoardOn())
+			if (SetOption(&option))
+				return opened;
+	return (opened = FALSE);
 }
 
 BOOL DM::DiskMaster::Close()
@@ -689,7 +735,7 @@ BOOL DM::DiskMaster::IsOpen( void )
 
 const DM::DM_TASK_INFO *DM::DiskMaster::TaskInfo()
 {
-	return &dm_task_info;
+	return &task_info;
 }
 
 DWORD DM::DiskMaster::PortsCount( void )
@@ -783,7 +829,7 @@ BOOL DM::DiskMaster::CopyEx( DWORD src_port, DWORD dst_port, ULONGLONG &src_offs
 	else if (dst_port == kSata1)
 		task_code = kTaskUsb1Sata1Copy;
 
-	if (dm_current_task != task_code)
+	if (current_task != task_code)
 		if (!CmdSendTask(task_code))
 			return FALSE;
 
@@ -974,7 +1020,7 @@ BOOL DM::DiskMaster::ReadBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD 
 			task_code = kTaskSata1Read;
 		} else return FALSE;
 
-		if (dm_current_task != task_code)
+		if (current_task != task_code)
 			if (!CmdSendTask(task_code))
 				return FALSE;
 
@@ -1002,7 +1048,7 @@ BOOL DM::DiskMaster::WriteBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD
 			task_code = kTaskSata1Read;
 		} else return FALSE;
 
-		if (dm_current_task != task_code)
+		if (current_task != task_code)
 			if (!CmdSendTask(task_code))
 				return FALSE;
 
@@ -1010,4 +1056,24 @@ BOOL DM::DiskMaster::WriteBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD
 			return CmdWriteLbaHdd2(buff, offset, block_size);
 	}
 	return FALSE;
+}
+
+BOOL DM::DiskMaster::SetOption(DM::DM_OPTION *dm_option)
+{
+	assert(dm_option);
+	assert(opened);
+	if(IsValidOption(dm_option)) {
+		if(CmdSendOption(dm_option)) {
+			memcpy(&option, dm_option, sizeof(DM::DM_OPTION));
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+void DM::DiskMaster::GetOption(DM::DM_OPTION *dm_option)
+{
+	assert(dm_option);
+	assert(opened);
+	memcpy(dm_option, &option, sizeof(DM::DM_OPTION));
 }

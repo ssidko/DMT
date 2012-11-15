@@ -10,7 +10,7 @@
 
 namespace DM 
 {
-#define DM_DESCRIPTION_MAX_LEN						(DWORD)64
+#define DM_NAME_MAX_LEN						(DWORD)64
 #define DM_DESCRIPTION_STR							"USB DiskMaster"
 
 #define DM_ENABLED									1
@@ -25,7 +25,16 @@ namespace DM
 #define DM_DEFAULT_OPT_CHIRP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок чтени€/записи
 #define DM_DEFAULT_OPT_CRC_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок CRC
 #define DM_DEFAULT_OPT_END_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при завершении (прекращении) задачи
-#define DM_DEFAULT_OPT_BAD_MARKER					(WORD) DM_BAD_MARKER_0000 // ћаркер 
+#define DM_DEFAULT_OPT_BAD_MARKER					(WORD) DM_BAD_MARKER_0000 // ћаркер
+
+#define DM_OPTION_READ_COUNT_MIN					(WORD) 1
+#define DM_OPTION_READ_COUNT_MAX					(WORD) 100
+
+#define DM_OPTION_READ_TIMEOUT_MIN					(WORD) 3000
+#define DM_OPTION_READ_TIMEOUT_MAX					(WORD) 15000
+
+#define DM_OPTION_SHAKE_POWER_LIMIT_MIN				(WORD) 10
+#define DM_OPTION_SHAKE_POWER_LIMIT_MAX				(WORD) 100
 
 
 	enum DM_Event {
@@ -146,21 +155,22 @@ namespace DM
 	class DiskMaster : public DiskController
 	{
 	private:
-		DWORD id;
+		DWORD number;
 		DWORD unique_id;
 		IO *io;
-		char name[DM_DESCRIPTION_MAX_LEN];
+		char name[DM_NAME_MAX_LEN];
 		PORT ports[kPortsCount];
 		DMDisk *disks[kPortsCount];
 		BOOL opened;
 		BOOL task_in_progress;
-		WORD dm_current_task;
-		WORD dm_last_cmd;
-		DM_TASK_INFO dm_task_info;
+		WORD current_task;
+		WORD last_cmd;
 		ULONGLONG last_bad;
+		DM_TASK_INFO task_info;
+		DM_OPTION option;
 
 		void Initialize(void);
-		BOOL IsValidCommand(WORD code);
+		BOOL IsValidCommand(WORD cmd_code);
 		BOOL SendCommand(DM_CMD_MSG_HEADER &cmd);
 		void AddDisk(DMDisk *disk, BYTE port_num);
 		void RemoveDisk(BYTE port_num);
@@ -170,7 +180,7 @@ namespace DM
 		BOOL CmdCheckReady(void);
 		BOOL CmdBoardOn();
 		BOOL CmdBoardOff();
-		BOOL CmdSendOption(DM_OPTION &option);
+		BOOL CmdSendOption(DM_OPTION *option);
 		BOOL CmdSendTask(BYTE task_code);
 		BOOL CmdSetSataSize(ULONGLONG &new_size);
 		BOOL CmdSetCopyOffset(DM_COPY_OFFSET &copy_offset);
@@ -186,8 +196,12 @@ namespace DM
 		WORD Task();
 		DWORD Command(void);
 
+		void InitializeOptionWithDefaultValues(DM_OPTION *dm_option);
+		BOOL IsValidOption(DM_OPTION *dm_option); /*!!! NOT IMPLEMENTED !!!*/
+		BOOL SetDefaultOption(DM_OPTION *dm_option);
+
 	public:
-		DiskMaster(DWORD dm_id, DWORD dm_unique_id, IO *dm_io);
+		DiskMaster(DWORD dm_number, DWORD dm_unique_id, IO *dm_io);
 
 		~DiskMaster();
 
@@ -221,6 +235,9 @@ namespace DM
 		BOOL ReadBlock(DWORD port, ULONGLONG &offset,  BYTE *buff, DWORD block_size) /*!!! NOT IMPLEMENTED !!!*/;
 		BOOL WriteBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD block_size) /*!!! NOT IMPLEMENTED !!!*/;
 
+		BOOL SetOption(DM_OPTION *dm_option);
+		void GetOption(DM_OPTION *dm_option);
+
 		void Testing(void *param = NULL)
 		{
 			if (Open()) {
@@ -234,9 +251,9 @@ namespace DM
 				option.EndBeep = DM_DEFAULT_OPT_END_BEEP;
 				option.BadMarker = DM_DEFAULT_OPT_BAD_MARKER;
 
-				ret = this->CmdSendOption(option);
+				ret = this->CmdSendOption(&option);
 
-				
+
 				int x = 0;	
 			}		
 		}
