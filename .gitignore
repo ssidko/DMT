@@ -19,6 +19,7 @@ Thumbs.db
 *.ilk
 *.log
 *.sbr
+*.opensdf
 obj/
 ipch/
 _ReSharper*/

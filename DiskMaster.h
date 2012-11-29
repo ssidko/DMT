@@ -202,7 +202,6 @@ namespace DM
 
 	public:
 		DiskMaster(DWORD dm_number, DWORD dm_unique_id, IO *dm_io);
-
 		~DiskMaster();
 
 		IO *GetIO(void);
@@ -252,7 +251,6 @@ namespace DM
 				option.BadMarker = DM_DEFAULT_OPT_BAD_MARKER;
 
 				ret = this->CmdSendOption(&option);
-
 
 				int x = 0;	
 			}		
