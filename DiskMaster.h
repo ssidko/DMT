@@ -197,7 +197,7 @@ namespace DM
 		DWORD Command(void);
 
 		void InitializeOptionWithDefaultValues(DM_OPTION *dm_option);
-		BOOL IsValidOption(DM_OPTION *dm_option); /*!!! NOT IMPLEMENTED !!!*/
+		BOOL IsValidOption(DM_OPTION *dm_option);
 		BOOL SetDefaultOption(DM_OPTION *dm_option);
 
 	public:
