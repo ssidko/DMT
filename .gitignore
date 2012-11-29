@@ -23,6 +23,6 @@ Thumbs.db
 obj/
 ipch/
 _ReSharper*/
-[Dd]ebug/*
-[Rr]elease/*
+[Dd]ebug/
+[Rr]elease/
 [Tt]est[Rr]esult*
