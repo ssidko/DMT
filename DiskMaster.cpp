@@ -107,7 +107,7 @@ typedef WORD													CMD_COMPLETE_CODE;
 #pragma pack(pop)
 
 DM::DiskMaster::DiskMaster( DWORD dm_id, DWORD dm_unique_id, IO *dm_io ) :
-	number(dm_id),
+	id(dm_id),
 	unique_id(dm_unique_id),
 	io(dm_io),
 	opened(FALSE),
@@ -237,7 +237,7 @@ BOOL DM::DiskMaster::CmdBoardOn()
 {
 	DMT_TRACE("\n BoardOn\n");
 	CMD_BOARD_ON cmd;
-	cmd.param = number;
+	cmd.param = id;
 	return (opened = SendCommand(cmd));
 }
 
@@ -324,22 +324,22 @@ void DM::DiskMaster::ProcessDetectInfo( DM_DETECT_INFO &di, BYTE task_code )
 	}
 	if ((task_code == kTaskUsb1Sata1Copy) || (task_code == kTaskSata1Read) || (task_code == kTaskSata1Verify) ||
 		(task_code == kTaskSata1_00_Erase) || (task_code == kTaskSata1_FF_Erase) || (task_code == kTaskSata1_Random_Erase)) {
-			size = 0;
-			memcpy(&size, &di.sata1_native_max, sizeof(di.sata1_native_max));
-			disk = new DMDisk(&ports[kSata1], &di.sata1_id, size);
-			if (disk->Size() && disk->BlockSize()) {
-				if (disks[kSata1] == NULL)
-					AddDisk(disk, kSata1);
+		size = 0;
+		memcpy(&size, &di.sata1_native_max, sizeof(di.sata1_native_max));
+		disk = new DMDisk(&ports[kSata1], &di.sata1_id, size);
+		if (disk->Size() && disk->BlockSize()) {
+			if (disks[kSata1] == NULL)
+				AddDisk(disk, kSata1);
+			else {
+				if (*disks[kSata1] == *disk)
+					delete disk;
 				else {
-					if (*disks[kSata1] == *disk)
-						delete disk;
-					else {
-						RemoveDisk(kSata1);
-						AddDisk(disk, kSata1);
-					}
-				}					
-			}
-			else delete disk;
+					RemoveDisk(kSata1);
+					AddDisk(disk, kSata1);
+				}
+			}					
+		}
+		else delete disk;
 	}
 }
 
@@ -691,9 +691,9 @@ DM::IO *DM::DiskMaster::GetIO( void )
 	return io;
 }
 
-DWORD DM::DiskMaster::GetNumber( void )
+DWORD DM::DiskMaster::GetID( void )
 {
-	return number;
+	return id;
 }
 
 DWORD DM::DiskMaster::GetUniqueID( void )

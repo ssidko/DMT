@@ -91,7 +91,7 @@ namespace DM
 
 		virtual BOOL IsOpen() = 0;
 
-		virtual DWORD GetNumber(void) = 0;
+		virtual DWORD GetID(void) = 0;
 
 		virtual DWORD GetUniqueID(void) = 0;
 

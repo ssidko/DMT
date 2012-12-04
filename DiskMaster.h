@@ -10,7 +10,7 @@
 
 namespace DM 
 {
-#define DM_NAME_MAX_LEN						(DWORD)64
+#define DM_NAME_MAX_LEN								(DWORD)64
 #define DM_DESCRIPTION_STR							"USB DiskMaster"
 
 #define DM_ENABLED									1
@@ -19,16 +19,16 @@ namespace DM
 #define DM_BAD_MARKER_0000							0
 #define DM_BAD_MARKER_BAD							1
 
-#define DM_DEFAULT_OPT_READ_COUNT					(WORD) 100			// „исло попыток чтени€ дефектных секторов
+#define DM_DEFAULT_OPT_READ_COUNT					(WORD) 1			// „исло попыток чтени€ дефектных секторов
 #define DM_DEFAULT_OPT_READ_TIMEOUT					(WORD) 15000		// ƒопустимое врем€ выполнени€ команд чтени€, мсек
 #define DM_DEFAULT_OPT_SHAKE_POWER_LIMIT			(WORD) 100			// ќбщее допустимое число переключений питани€ в течении одной задачи
 #define DM_DEFAULT_OPT_CHIRP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок чтени€/записи
 #define DM_DEFAULT_OPT_CRC_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок CRC
 #define DM_DEFAULT_OPT_END_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при завершении (прекращении) задачи
-#define DM_DEFAULT_OPT_BAD_MARKER					(WORD) DM_BAD_MARKER_0000 // ћаркер
+#define DM_DEFAULT_OPT_BAD_MARKER					(WORD) DM_BAD_MARKER_BAD // ћаркер
 
 #define DM_OPTION_READ_COUNT_MIN					(WORD) 1
-#define DM_OPTION_READ_COUNT_MAX					(WORD) 100
+#define DM_OPTION_READ_COUNT_MAX					(WORD) 10
 
 #define DM_OPTION_READ_TIMEOUT_MIN					(WORD) 3000
 #define DM_OPTION_READ_TIMEOUT_MAX					(WORD) 15000
@@ -155,7 +155,7 @@ namespace DM
 	class DiskMaster : public DiskController
 	{
 	private:
-		DWORD number;
+		DWORD id;
 		DWORD unique_id;
 		IO *io;
 		char name[DM_NAME_MAX_LEN];
@@ -201,12 +201,12 @@ namespace DM
 		BOOL SetDefaultOption(DM_OPTION *dm_option);
 
 	public:
-		DiskMaster(DWORD dm_number, DWORD dm_unique_id, IO *dm_io);
+		DiskMaster(DWORD dm_id, DWORD dm_unique_id, IO *dm_io);
 		~DiskMaster();
 
 		IO *GetIO(void);
 
-		virtual DWORD GetNumber(void);
+		virtual DWORD GetID(void);
 		virtual DWORD GetUniqueID(void);
 		virtual const char *GetName(void);
 
