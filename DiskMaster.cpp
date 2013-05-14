@@ -1011,7 +1011,9 @@ BOOL DM::DiskMaster::TestEx( DWORD port, ULONGLONG &offset, ULONGLONG &count, DW
 
 void DM::DiskMaster::Break(void)
 {
-	CmdTaskBreak();
+	if (task_in_progress) {
+		CmdTaskBreak();
+	}
 }
 
 BOOL DM::DiskMaster::ReadBlock(DWORD port, ULONGLONG &offset, BYTE *buff, DWORD block_size)
