@@ -12,8 +12,8 @@
 #include "abstract.h"
 
 // Working with  cd-rom
-#include <winioctl.h>
-#include "ntddcdrm.h"
+//#include <winioctl.h>
+//#include "ntddcdrm.h"
 
 using namespace DM;
 
