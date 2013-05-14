@@ -893,12 +893,14 @@ BOOL DM::DiskMaster::Erase( DWORD port, DWORD param )
 		}
 		else return FALSE;
 
-		if (CmdSendTask(task_code)) {
-			DM_LBA_RANGE range;
-			range.start = (ULONGLONG)0;
-			range.end = disks[port]->Size() - 1;
-			return CmdEraseBlock(range);
-		}
+		if (current_task != task_code)
+			if (!CmdSendTask(task_code))
+				return FALSE;
+
+		DM_LBA_RANGE range;
+		range.start = (ULONGLONG)0;
+		range.end = disks[port]->Size() - 1;
+		return CmdEraseBlock(range);
 	}
 	return FALSE;
 }
@@ -939,14 +941,16 @@ BOOL DM::DiskMaster::EraseEx( DWORD port, ULONGLONG &offset, ULONGLONG &count, D
 		}
 		else return FALSE;
 
-		if (CmdSendTask(task_code)) {
-			if (count) {
-				if ((offset + count) <= disks[port]->Size()) {
-					DM_LBA_RANGE range;
-					range.start = offset;
-					range.end = offset + count - 1;
-					return CmdEraseBlock(range);
-				}
+		if (current_task != task_code)
+			if (!CmdSendTask(task_code))
+				return FALSE;
+
+		if (count) {
+			if ((offset + count) <= disks[port]->Size()) {
+				DM_LBA_RANGE range;
+				range.start = offset;
+				range.end = offset + count - 1;
+				return CmdEraseBlock(range);
 			}
 		}
 	}
@@ -964,12 +968,15 @@ BOOL DM::DiskMaster::Test( DWORD port, DWORD param )
 		} else if (port == kSata1) {
 			task_code = kTaskSata1Verify;
 		} else return FALSE;
-		if (CmdSendTask(task_code)) {
-			DM_LBA_RANGE range;
-			range.start = (ULONGLONG)0;
-			range.end = (ULONGLONG)disks[port]->Size() - 1;
-			return CmdTestBlock(range);
-		}
+
+		if (current_task != task_code)
+			if (!CmdSendTask(task_code))
+				return FALSE;
+
+		DM_LBA_RANGE range;
+		range.start = (ULONGLONG)0;
+		range.end = (ULONGLONG)disks[port]->Size() - 1;
+		return CmdTestBlock(range);
 	}
 	return FALSE;
 }
@@ -985,14 +992,17 @@ BOOL DM::DiskMaster::TestEx( DWORD port, ULONGLONG &offset, ULONGLONG &count, DW
 		} else if (port == kSata1) {
 			task_code = kTaskSata1Verify;
 		} else return FALSE;
-		if (CmdSendTask(task_code)) {
-			if (count) {
-				if ((offset + count) <= disks[port]->Size()) {
-					DM_LBA_RANGE range;
-					range.start = offset;
-					range.end = offset + count - 1;
-					return CmdTestBlock(range);
-				}
+
+		if (current_task != task_code)
+			if (!CmdSendTask(task_code))
+				return FALSE;
+
+		if (count) {
+			if ((offset + count) <= disks[port]->Size()) {
+				DM_LBA_RANGE range;
+				range.start = offset;
+				range.end = offset + count - 1;
+				return CmdTestBlock(range);
 			}
 		}
 	}
