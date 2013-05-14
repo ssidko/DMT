@@ -492,7 +492,7 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 								break;
 
 							case kEndCodeTaskEnd:
-								// После получения этого сообщения можна продолжить посылать
+								// После получения этого сообщения можно продолжить посылать
 								// блочные команды в соответствии с кодом задачи
 								this->Notify(kTaskComplete, &task_info);
 								task_in_progress = FALSE;
@@ -500,7 +500,7 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 								return TRUE;
 
 							case kEndCodeTaskBreak:
-								// После получения этого сообщения можна продолжить посылать
+								// После получения этого сообщения можно продолжить посылать
 								// блочные команды в соответствии с кодом задачи
 								this->Notify(kTaskBreak, &task_info);
 								task_in_progress = FALSE;
