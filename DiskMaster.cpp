@@ -528,8 +528,8 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 				case kMsgBadLba:
 					io->Read(&bad, sizeof(DM_LBA));
 					memcpy(&last_bad, &bad, sizeof(DM_LBA));
-					this->Notify(kBadBlock, &last_bad);
 					DMT_TRACE("  BAD: %lld\n", last_bad);
+					this->Notify(kBadBlock, &last_bad);
 					break;
 				default:
 					DMException();
