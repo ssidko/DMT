@@ -5,6 +5,7 @@
 #include <assert.h>
 #include "abstract.h"
 #include "ata8.h" 
+#include "DiskMaster.h"
 
 namespace DM
 {
@@ -18,6 +19,7 @@ namespace DM
 		friend DiskMaster;
 
 	private:
+		DM::DiskMaster *dm;
 		PORT *port;
 		INQUIRY_DATA inquiry_data;
 		IDENTIFY_DISK_ATA identify_data;
@@ -27,12 +29,14 @@ namespace DM
 		char model[DMDISK_MAX_STRING_LENGTH];
 		char serial_number[DMDISK_MAX_STRING_LENGTH];
 
-		DMDisk(PORT *_port, INQUIRY_DATA *_inquiry, ULONGLONG _size, DWORD _block_size) :
+		DMDisk(DM::DiskMaster *_dm, PORT *_port, INQUIRY_DATA *_inquiry, ULONGLONG _size, DWORD _block_size) :
+			dm(_dm),
 			port(_port),
 			size(_size),
 			native_size(_size),
 			block_size(_block_size)
 		{
+			assert(dm);
 			assert(port);
 			assert(_inquiry);
 			assert(size);
@@ -49,10 +53,12 @@ namespace DM
 			memcpy(model, (const char *)_inquiry->vendor_id, 24);
 		}
 
-		DMDisk(PORT *_port, IDENTIFY_DISK_ATA *_identify, ULONGLONG _native_size) : 
+		DMDisk(DM::DiskMaster *_dm, PORT *_port, IDENTIFY_DISK_ATA *_identify, ULONGLONG _native_size) :
+			dm(_dm),
 			port(_port),
 			native_size(_native_size)
 		{
+			assert(dm);
 			assert(port);
 			assert(_identify);
 			assert(native_size);
@@ -178,6 +184,12 @@ namespace DM
 		virtual ULONGLONG NativeSize(void)
 		{
 			return native_size;
+		}
+
+		virtual BOOL SetSize(ULONGLONG &new_size)
+		{
+			dm->SetDiskSize(*this, new_size);
+			return FALSE;
 		}
 
 		virtual DWORD BlockSize()

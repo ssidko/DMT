@@ -1,4 +1,5 @@
 #include "DiskMaster.h"
+#include "DMDisk.h"
 
 #pragma pack(push)
 #pragma pack(1)
@@ -291,7 +292,7 @@ void DM::DiskMaster::ProcessDetectInfo( DM_DETECT_INFO &di, BYTE task_code )
 	if ((task_code == kTaskUsb1Sata1Copy) || (task_code == kTaskUsb1Usb2Copy) || (task_code == kTaskUsb1Read)) {
 		memcpy(&size, &di.usb1_num_lba, sizeof(di.usb1_num_lba));
 		if (size && di.usb1_block_size) {
-			disk = new DMDisk(&ports[kUsb1], &di.usb1_id, size, di.usb1_block_size);
+			disk = new DMDisk(this, &ports[kUsb1], &di.usb1_id, size, di.usb1_block_size);
 			if (disks[kUsb1] == NULL)
 				AddDisk(disk, kUsb1);
 			else {
@@ -309,7 +310,7 @@ void DM::DiskMaster::ProcessDetectInfo( DM_DETECT_INFO &di, BYTE task_code )
 			size = 0;
 			memcpy(&size, &di.usb2_num_lba, sizeof(di.usb2_num_lba));
 			if (size && di.usb2_block_size) {
-				disk = new DMDisk(&ports[kUsb2], &di.usb2_id, size, di.usb2_block_size);
+				disk = new DMDisk(this, &ports[kUsb2], &di.usb2_id, size, di.usb2_block_size);
 				if (disks[kUsb2] == NULL)
 					AddDisk(disk, kUsb2);
 				else {
@@ -326,7 +327,7 @@ void DM::DiskMaster::ProcessDetectInfo( DM_DETECT_INFO &di, BYTE task_code )
 		(task_code == kTaskSata1_00_Erase) || (task_code == kTaskSata1_FF_Erase) || (task_code == kTaskSata1_Random_Erase)) {
 		size = 0;
 		memcpy(&size, &di.sata1_native_max, sizeof(di.sata1_native_max));
-		disk = new DMDisk(&ports[kSata1], &di.sata1_id, size);
+		disk = new DMDisk(this, &ports[kSata1], &di.sata1_id, size);
 		if (disk->Size() && disk->BlockSize()) {
 			if (disks[kSata1] == NULL)
 				AddDisk(disk, kSata1);
@@ -391,7 +392,7 @@ BOOL DM::DiskMaster::CmdSendTask( BYTE task_code )
 	return FALSE;
 }
 
-BOOL DM::DiskMaster::CmdSetSataSize( ULONGLONG &new_size )
+BOOL DM::DiskMaster::CmdSetSata1Size( ULONGLONG &new_size )
 {
 	DMT_TRACE("\n SetSataSize\n");
 	assert(opened);
@@ -400,7 +401,7 @@ BOOL DM::DiskMaster::CmdSetSataSize( ULONGLONG &new_size )
 		(current_task == kTaskSata1Verify) );
 
 	CMD_SET_SATA_SIZE cmd;
-	cmd.param = new_size;
+	cmd.param = new_size - 1;
 	return SendCommand(cmd);
 }
 
@@ -484,11 +485,11 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 			switch(hdr.code){
 				case kMsgTaskInfo:
 					if (sizeof(DM_TASK_INFO) == io->Read(&task_info, sizeof(DM_TASK_INFO))) {
-						memcpy(&curr_lba, &task_info.Lba, sizeof(DM_LBA));
-						switch (task_info.End_code) {
+						memcpy(&curr_lba, &task_info.lba, sizeof(DM_LBA));
+						switch (task_info.end_code) {
 							case kEndCodeTaskNotEnd:
 								this->Notify(kTaskInProgress, &task_info);
-								DMT_TRACE("  LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.TimeCnt_1d, task_info.TimeCnt_1h, task_info.TimeCnt_1m, task_info.TimeCnt_1s);
+								DMT_TRACE("  LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.time_cnt_1d, task_info.time_cnt_1h, task_info.time_cnt_1m, task_info.time_cnt_1s);
 								break;
 
 							case kEndCodeTaskEnd:
@@ -496,7 +497,7 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 								// блочные команды в соответствии с кодом задачи
 								this->Notify(kTaskComplete, &task_info);
 								task_in_progress = FALSE;
-								DMT_TRACE("  TASK END -- LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.TimeCnt_1d, task_info.TimeCnt_1h, task_info.TimeCnt_1m, task_info.TimeCnt_1s);
+								DMT_TRACE("  TASK END -- LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.time_cnt_1d, task_info.time_cnt_1h, task_info.time_cnt_1m, task_info.time_cnt_1s);
 								return TRUE;
 
 							case kEndCodeTaskBreak:
@@ -504,7 +505,7 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 								// блочные команды в соответствии с кодом задачи
 								this->Notify(kTaskBreak, &task_info);
 								task_in_progress = FALSE;
-								DMT_TRACE("  Task BREAK LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.TimeCnt_1d, task_info.TimeCnt_1h, task_info.TimeCnt_1m, task_info.TimeCnt_1s);
+								DMT_TRACE("  Task BREAK LBA: %lld %dd:%dh:%dm:%ds\n", curr_lba, task_info.time_cnt_1d, task_info.time_cnt_1h, task_info.time_cnt_1m, task_info.time_cnt_1s);
 								return FALSE;
 
 							case kEndCodeTaskCrash:
@@ -513,12 +514,12 @@ BOOL DM::DiskMaster::WaitForTaskEnd()
 								//
 								// ¬ данном месте нада уведомить всех подписчиков о завершении таска,
 								// и ќЅя«ј“≈Ћ№Ќќ ƒќ ”—“јЌќ¬ » current_task = kTaskNone,  
-								// т.к. подписчики об€зательно захот€т узнать какой именно таск закончилс€.
+								// т.к. подписчики наверн€ка захот€т узнать какой именно таск закончилс€.
 								//
 								this->Notify(kTaskError, &task_info);
 								current_task = kTaskNone;
 								task_in_progress = FALSE;
-								DMT_TRACE(" Task ERROR: %d\n", task_info.End_code);
+								DMT_TRACE(" Task ERROR: %d\n", task_info.end_code);
 								return FALSE;
 							default:
 								return FALSE;
@@ -1087,4 +1088,18 @@ void DM::DiskMaster::GetOption(DM::DM_OPTION *dm_option)
 	assert(dm_option);
 	assert(opened);
 	memcpy(dm_option, &option, sizeof(DM::DM_OPTION));
+}
+
+BOOL DM::DiskMaster::SetDiskSize(DM::DMDisk &disk, ULONGLONG &new_size)
+{
+	if (!opened) {
+		return FALSE;
+	}
+	if (disk.Port()->number == kSata1) {
+		if (current_task != kTaskSata1Read)
+			if (!CmdSendTask(kTaskSata1Read))
+				return FALSE;
+		return CmdSetSata1Size(new_size);
+	}
+	return FALSE;
 }

@@ -4,7 +4,6 @@
 #include <windows.h>
 #include <assert.h>
 #include "ata8.h"
-#include "DMDisk.h"
 #include "abstract.h"
 #include "Utilities.h"
 
@@ -19,13 +18,13 @@ namespace DM
 #define DM_BAD_MARKER_0000							0
 #define DM_BAD_MARKER_BAD							1
 
-#define DM_DEFAULT_OPT_READ_COUNT					(WORD) 1			// „исло попыток чтени€ дефектных секторов
-#define DM_DEFAULT_OPT_READ_TIMEOUT					(WORD) 15000		// ƒопустимое врем€ выполнени€ команд чтени€, мсек
-#define DM_DEFAULT_OPT_SHAKE_POWER_LIMIT			(WORD) 100			// ќбщее допустимое число переключений питани€ в течении одной задачи
-#define DM_DEFAULT_OPT_CHIRP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок чтени€/записи
-#define DM_DEFAULT_OPT_CRC_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при обработке ошибок CRC
-#define DM_DEFAULT_OPT_END_BEEP						(WORD) DM_ENABLED	// –азрешение/запрещение звукового сигнала при завершении (прекращении) задачи
-#define DM_DEFAULT_OPT_BAD_MARKER					(WORD) DM_BAD_MARKER_BAD // ћаркер
+#define DM_DEFAULT_OPT_READ_COUNT					(WORD) 1					// „исло попыток чтени€ дефектных секторов
+#define DM_DEFAULT_OPT_READ_TIMEOUT					(WORD) 15000				// ƒопустимое врем€ выполнени€ команд чтени€, мсек
+#define DM_DEFAULT_OPT_SHAKE_POWER_LIMIT			(WORD) 100					// ќбщее допустимое число переключений питани€ в течении одной задачи
+#define DM_DEFAULT_OPT_CHIRP						(WORD) DM_ENABLED			// –азрешение/запрещение звукового сигнала при обработке ошибок чтени€/записи
+#define DM_DEFAULT_OPT_CRC_BEEP						(WORD) DM_ENABLED			// –азрешение/запрещение звукового сигнала при обработке ошибок CRC
+#define DM_DEFAULT_OPT_END_BEEP						(WORD) DM_ENABLED			// –азрешение/запрещение звукового сигнала при завершении (прекращении) задачи
+#define DM_DEFAULT_OPT_BAD_MARKER					(WORD) DM_BAD_MARKER_BAD	// ћаркер
 
 #define DM_OPTION_READ_COUNT_MIN					(WORD) 1
 #define DM_OPTION_READ_COUNT_MAX					(WORD) 10
@@ -48,7 +47,7 @@ namespace DM
 		kBadBlock					// param = (ULONGLONG *)
 	};
 
-	enum  DM_Port{
+	enum  DM_Port {
 		kUsb1,
 		kUsb2,
 		kSata1,
@@ -115,19 +114,19 @@ namespace DM
 	} DM_DETECT_INFO, *PDM_DETECT_INFO;
 
 	typedef struct _DM_TASK_INFO {
-		WORD End_code;
-		DM_LBA Lba;
-		WORD RepCount;
-		DWORD BadCount;
-		WORD TimeoutCount;
-		WORD TimeCnt_1s;
-		WORD TimeCnt_1m;
-		WORD TimeCnt_1h;
-		WORD TimeCnt_1d;
-		WORD TMax;
-		DWORD Slow_30_cnt;
-		DWORD Slow_100_cnt;
-		DWORD Slow_300_cnt;
+		WORD end_code;
+		DM_LBA lba;
+		WORD rep_count;
+		DWORD bad_count;
+		WORD timeout_count;
+		WORD time_cnt_1s;
+		WORD time_cnt_1m;
+		WORD time_cnt_1h;
+		WORD time_cnt_1d;
+		WORD time_max;
+		DWORD slow_30_cnt;
+		DWORD slow_100_cnt;
+		DWORD slow_300_cnt;
 	} DM_TASK_INFO, *PDM_TASK_INFO;
 
 	typedef struct _DM_OPTION {
@@ -151,6 +150,8 @@ namespace DM
 	} DM_COPY_OFFSET, *PDM_COPY_OFFSET;
 
 #pragma pack(pop)
+
+	class DMDisk;
 
 	class DiskMaster : public DiskController
 	{
@@ -182,7 +183,7 @@ namespace DM
 		BOOL CmdBoardOff();
 		BOOL CmdSendOption(DM_OPTION *option);
 		BOOL CmdSendTask(BYTE task_code);
-		BOOL CmdSetSataSize(ULONGLONG &new_size);
+		BOOL CmdSetSata1Size(ULONGLONG &new_size);
 		BOOL CmdSetCopyOffset(DM_COPY_OFFSET &copy_offset);
 		BOOL CmdCopyBlock(DM_LBA_RANGE &range);
 		BOOL CmdTestBlock(DM_LBA_RANGE &range);
@@ -236,6 +237,8 @@ namespace DM
 
 		BOOL SetOption(DM_OPTION *dm_option);
 		void GetOption(DM_OPTION *dm_option);
+
+		BOOL SetDiskSize(DMDisk &disk, ULONGLONG &new_max_lba);
 
 		void Testing(void *param = NULL)
 		{

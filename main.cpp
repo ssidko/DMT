@@ -23,30 +23,22 @@ int _tmain(int argc, _TCHAR* argv[])
 	DiskMaster *dm = NULL;
 	DiskMasterManager *dm_mgr = DM::GetDiskMasterManager();
 
+	int x = 0;
+	ULONGLONG size = 0;
 	Disk *disk = NULL;
 	if (dm_mgr->Rescan()) {
 		dm = dm_mgr->GetDiskMaster(0);
-		dm->Testing();
-		//if (dm->Open()) {
-		//	ULONGLONG offset = 0;
-		//	disk = dm->Rescan(kSata1);
-		//	if (disk) {
-		//		BYTE *block = new BYTE[disk->BlockSize()];
-		//		memset(block, 0xAA, disk->BlockSize());
-		//		
-		//		dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
-
-		//		memset(block, 0xAA, disk->BlockSize());
-
-		//		dm->WriteBlock(kSata1, offset, block, disk->BlockSize());
-
-		//		dm->ReadBlock(kSata1, offset, block, disk->BlockSize());
-
-		//		int x = 0;
-		//	}
-
-		//	ret = dm->Close();
-		//}
+		if (dm->Open()) {
+			disk = dm->Rescan(kSata1);
+			size = disk->Size();
+			size = disk->NativeSize();
+			disk->SetSize(size);
+			size = disk->Size();
+			
+			x++;
+			dm->Close();
+		}		
+		x--;
 	}
 
 	_tprintf(_T("\nPress any key for exit ..."));
